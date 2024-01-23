@@ -45,6 +45,32 @@ SillyTavern.getContext().chat[1]
 ```
 
 
+Use the `/wiactions` slash commands to configure witch Quick Reply sets are added to World Info entries in the WI editor.  
+This command takes the same arguments as `/messageactions`.
+
+Quick Replies executed through WI buttons have the `{{wi::...}}` macro available.
+
+```
+{{wi::file}} |
+{{wi::id}} |
+{{wi::comment}} |
+{{wi::status}} |
+{{wi::position}} |
+{{wi::depth}} |
+{{wi::order}} |
+{{wi::probability}} |
+{{wi::key}} |
+{{wi::entryLogicType}} |
+{{wi::keysecondary}} |
+{{wi::exclude_recursion}} |
+{{wi::prevent_recursion}} |
+{{wi::content}} |
+{{wi::character_exclusion}} |
+{{wi::characterFilter}} |
+{{wi::group}}
+```
+
+
 
 
 ## Requirements

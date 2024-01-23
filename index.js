@@ -10,6 +10,9 @@ import { quickReplyApi } from '../../quick-reply/index.js';
 let settings;
 const qrsList = [];
 let qrsListJson;
+const wiQrsList = [];
+let wiQrsListJson;
+let file;
 
 
 
@@ -24,6 +27,24 @@ const qrUpdate = async() => {
             qrsListJson = setListJson;
             Array.from(document.querySelectorAll('#chat > .mes[mesid]')).forEach(it=>updateMessage(it.getAttribute('mesid'), true));
         }
+
+        let wiForce = false;
+        const wiSetList = settings.wiQuickReplySetList.map(name=>quickReplyApi.getSetByName(name)).filter(it=>it);
+        const wiSetListJson = JSON.stringify(wiSetList);
+        if (wiSetListJson != wiQrsListJson) {
+            while (wiQrsList.length > 0) wiQrsList.pop();
+            wiQrsList.push(...wiSetList);
+            wiQrsListJson = wiSetListJson;
+            wiForce = true;
+        }
+        const newFile = document.querySelector('#world_editor_select :checked').textContent;
+        if (file != newFile) {
+            file = newFile;
+            wiForce = true;
+        }
+        Array.from(document.querySelectorAll('#world_popup_entries_list .world_entry')).forEach(entry=>{
+            updateWiEntry(entry, wiForce);
+        });
         await delay(200);
     }
 };
@@ -95,6 +116,58 @@ const returnObject = (context, path) => {
 
 
 
+const updateWiEntry = (entry, isForced = false) => {
+    if (!settings.isEnabled) return;
+    if (!isForced && entry.querySelector('.stma--button')) return;
+    Array.from(entry.querySelectorAll('.stma--button')).forEach(it=>it.remove());
+    const anchor = entry.querySelector('.WIEntryTitleAndStatus [name="comment"]');
+    for (const qrs of wiQrsList) {
+        for (const qr of qrs.qrList) {
+            const btn = document.createElement('div'); {
+                btn.classList.add('stma--button');
+                btn.classList.add('menu_button');
+                btn.textContent = qr.label;
+                btn.title = qr.title || qr.message;
+                btn.addEventListener('click', async(evt)=>{
+                    evt.stopPropagation();
+                    if (evt.ctrlKey) {
+                        qr.showEditor();
+                        return;
+                    }
+                    try {
+                        const wi = {
+                            file: ()=>`"${file}"`,
+                            id: ()=>entry.querySelector('.world_entry_form_uid_value').textContent.replace(/^.*?(\d+).*?$/, '$1'),
+                            comment: ()=>anchor.value,
+                            status: ()=>entry.querySelector('[name="entryStateSelector"]').value,
+                            position: ()=>entry.querySelector('[name="position"]').value,
+                            depth: ()=>entry.querySelector('[name="depth"]').value,
+                            order: ()=>entry.querySelector('[name="order"]').value,
+                            probability: ()=>entry.querySelector('[name="probability"]').value,
+                            key: ()=>entry.querySelector('[name="key"]').value,
+                            entryLogicType: ()=>entry.querySelector('[name="entryLogicType"]').value,
+                            keysecondary: ()=>entry.querySelector('[name="keysecondary"]').value,
+                            exclude_recursion: ()=>entry.querySelector('[name="exclude_recursion"]').checked,
+                            prevent_recursion: ()=>entry.querySelector('[name="prevent_recursion"]').checked,
+                            content: ()=>entry.querySelector('[name="content"]').value,
+                            character_exclusion: ()=>entry.querySelector('[name="character_exclusion"]').checked,
+                            characterFilter: ()=>entry.querySelector('[name="characterFilter"]').value,
+                            group: ()=>entry.querySelector('[name="group"]').value,
+                        };
+                        const cmd = qr.message
+                            .replace(/{{wi::((?:(?!(?:}})).)+)}}/ig, (_, path)=>wi[path]())
+                        ;
+                        await executeSlashCommands(cmd);
+                    } catch (ex) {
+                        toastr.error(ex.message);
+                    }
+                });
+                anchor.insertAdjacentElement('afterend', btn);
+                anchor.parentElement.style.flexWrap = 'nowrap';
+            }
+        }
+    }
+};
 
 const updateMessage = (mesIdx, isForced = false) => {
     if (!settings.isEnabled) return;
@@ -121,7 +194,7 @@ const updateMessage = (mesIdx, isForced = false) => {
                         ;
                         await executeSlashCommands(cmd);
                     } catch (ex) {
-                        toastr.error(ex);
+                        toastr.error(ex.message);
                     }
                 });
                 container.firstElementChild.insertAdjacentElement('beforebegin', btn);
@@ -138,7 +211,8 @@ const onMessageRendered = (mesIdx) => {
 const initSettings = () => {
     settings = Object.assign({
         isEnabled: true,
-        quickReplySetList: ['mbtest'],
+        quickReplySetList: [],
+        wiQuickReplySetList : [],
     }, extension_settings.messageButtons ?? {});
     extension_settings.messageButtons = settings;
     qrUpdate();
@@ -163,6 +237,22 @@ const init = async () => {
             saveSettingsDebounced();
         }
     }, [], '<span class="monospace">listOfQrSetNames</span> – Set which QR sets to be used in messages buttons. Call without arguments to remove all QR sets. Example: <tt>/messageactions MyQrSet</tt> or <tt>/messageactions MyQrSet, MyOtherQrSet</tt> or <tt>/messageactions "MyQrSet", "My Other QR Set"</tt>', true, true);
+
+
+    registerSlashCommand('wiactions', (args, value)=>{
+        try { value = JSON.parse(value); } catch {
+            try { value = JSON.parse(`[${value}]`); } catch {
+                try { value = value.split(/\s*,\s*/); } catch {
+                    try { value = JSON.parse(`["${value}"]`); } catch { /* empty */ }
+                }
+            }
+        }
+        if (Array.isArray(value)) {
+            settings.wiQuickReplySetList = value;
+            saveSettingsDebounced();
+        }
+    }, [], '<span class="monospace">listOfQrSetNames</span> – Set which QR sets to be used in WI buttons. Call without arguments to remove all QR sets. Example: <tt>/wiactions MyQrSet</tt> or <tt>/wiactions MyQrSet, MyOtherQrSet</tt> or <tt>/wiactions "MyQrSet", "My Other QR Set"</tt>', true, true);
+
 };
 await init();
 
