@@ -113,9 +113,10 @@ const updateMessage = (mesIdx, isForced = false) => {
                         return;
                     }
                     try {
-                        const mes = chat[mesIdx];
+                        const id = btn.closest('[mesid]').getAttribute('mesid');
+                        const mes = chat[id];
                         const cmd = qr.message
-                            .replace(/{{mes::id}}/ig, mesIdx)
+                            .replace(/{{mes::id}}/ig, id)
                             .replace(/{{mes::((?:(?!(?:}})).)+)}}/ig, (_, path)=>returnObject(mes, path))
                         ;
                         await executeSlashCommands(cmd);
