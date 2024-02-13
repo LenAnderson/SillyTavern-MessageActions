@@ -154,8 +154,21 @@ const updateWiEntry = (entry, isForced = false) => {
                             characterFilter: ()=>entry.querySelector('[name="characterFilter"]').value,
                             group: ()=>entry.querySelector('[name="group"]').value,
                         };
+                        const gwi = (path)=>{
+                            if (wi[path]) return wi[path]();
+                            const el = entry.querySelector(`[name="${path}"]`);
+                            if (!el) return;
+                            switch (el.type) {
+                                case 'checkbox': {
+                                    return el.checked;
+                                }
+                                default: {
+                                    return el.value;
+                                }
+                            }
+                        };
                         const cmd = qr.message
-                            .replace(/{{wi::((?:(?!(?:}})).)+)}}/ig, (_, path)=>wi[path]())
+                            .replace(/{{wi::((?:(?!(?:}})).)+)}}/ig, (_, path)=>gwi(path))
                         ;
                         await executeSlashCommands(cmd);
                     } catch (ex) {
